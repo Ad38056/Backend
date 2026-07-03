@@ -1,9 +1,13 @@
-const mongoose = require("mongoose");
+const db = require("../db");
 
-const userSchema = new mongoose.Schema({
-    name: String,
-    email: { type: String, unique: true },
-    password: String,
-});
+// Create users table
+db.query(`
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100),
+  email VARCHAR(100) UNIQUE,
+  password TEXT
+);
+`);
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = db;

@@ -1,68 +1,56 @@
 const express = require("express");
 const router = express.Router();
-
-// IMPORTANT: correct import
 const db = require("../db");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-// CREATE product
-router.post("/", async (req, res) => {
+// REGISTER
+router.post("/register", async (req, res) => {
   try {
-    const { name, price, description } = req.body;
+    const { name, email, password } = req.body;
 
-    const result = await db.query(
-      "INSERT INTO products (name, price, description) VALUES ($1, $2, $3) RETURNING *",
-      [name, price, description]
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await db.query(
+      "INSERT INTO users (name, email, password) VALUES ($1,$2,$3) RETURNING *",
+      [name, email, hashedPassword]
     );
 
-    res.json(result.rows[0]);
+    res.json(user.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET all products
-router.get("/", async (req, res) => {
+// LOGIN
+router.post("/login", async (req, res) => {
   try {
-    const result = await db.query("SELECT * FROM products ORDER BY id DESC");
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    const { email, password } = req.body;
 
-// GET single product
-router.get("/:id", async (req, res) => {
-  try {
-    const result = await db.query("SELECT * FROM products WHERE id=$1", [
-      req.params.id,
-    ]);
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// UPDATE product
-router.put("/:id", async (req, res) => {
-  try {
-    const { name, price, description } = req.body;
-
-    const result = await db.query(
-      "UPDATE products SET name=$1, price=$2, description=$3 WHERE id=$4 RETURNING *",
-      [name, price, description, req.params.id]
+    const userResult = await db.query(
+      "SELECT * FROM users WHERE email=$1",
+      [email]
     );
 
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ message: "User not found" });
+    }
 
-// DELETE product
-router.delete("/:id", async (req, res) => {
-  try {
-    await db.query("DELETE FROM products WHERE id=$1", [req.params.id]);
-    res.json({ message: "Product deleted successfully" });
+    const user = userResult.rows[0];
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid password" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      "secretkey",
+      { expiresIn: "1h" }
+    );
+
+    res.json({ token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
