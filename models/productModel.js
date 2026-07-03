@@ -1,9 +1,15 @@
-const pool = require("../db/db");
+const { Pool } = require("pg");
+const pool = require("../db");
 
-// reusable queries
-const Product = {
-  getAll: () => pool.query("SELECT * FROM products"),
-  getById: (id) => pool.query("SELECT * FROM products WHERE id=$1", [id]),
-};
+// Create table if not exists
+pool.query(`
+CREATE TABLE IF NOT EXISTS products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  price NUMERIC NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`);
 
-module.exports = Product;
+module.exports = pool;
