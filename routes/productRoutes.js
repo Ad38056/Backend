@@ -26,7 +26,10 @@ router.post("/", auth, role("admin"), async (req, res) => {
 // 🔹 GET ALL PRODUCTS (LOGIN REQUIRED)
 router.get("/", auth, async (req, res) => {
   try {
-    const result = await db.query("SELECT * FROM products ORDER BY id DESC");
+    const result = await db.query(
+      "SELECT * FROM products ORDER BY id DESC"
+    );
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -43,12 +46,17 @@ router.get("/:id", auth, async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({
+        message: "Product not found"
+      });
     }
 
     res.json(result.rows[0]);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
@@ -59,13 +67,25 @@ router.put("/:id", auth, role("admin"), async (req, res) => {
     const { name, price, description } = req.body;
 
     const result = await db.query(
-      "UPDATE products SET name=$1, price=$2, description=$3 WHERE id=$4 RETURNING *",
+      `UPDATE products 
+       SET name=$1, price=$2, description=$3 
+       WHERE id=$4 
+       RETURNING *`,
       [name, price, description, req.params.id]
     );
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Product not found"
+      });
+    }
+
     res.json(result.rows[0]);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
@@ -73,12 +93,28 @@ router.put("/:id", auth, role("admin"), async (req, res) => {
 // 🔹 DELETE PRODUCT (ADMIN ONLY)
 router.delete("/:id", auth, role("admin"), async (req, res) => {
   try {
-    await db.query("DELETE FROM products WHERE id=$1", [req.params.id]);
+    const result = await db.query(
+      "DELETE FROM products WHERE id=$1 RETURNING *",
+      [req.params.id]
+    );
 
-    res.json({ message: "Product deleted" });
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Product not found"
+      });
+    }
+
+    res.json({
+      message: "Product deleted",
+      product: result.rows[0]
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
+
 
 module.exports = router;
